@@ -1,0 +1,59 @@
+name: CI/CD Pipeline
+
+
+on:
+    push:
+        branches:
+            - main
+env:
+  IMAGE_NAME: ${{ vars.DOCKERHUB_USERNAME }}/api-session16
+
+
+jobs:
+    test:
+        runs-on: ubuntu-latest
+        steps:
+            - name: checkout code
+              uses: actions/checkout@v6
+
+            - name: install dependencies
+              run: npm i
+
+            - name: run test
+              run: npm run test
+    push-and-build:
+        runs-on: ubuntu-latest
+        needs: test
+        steps:
+            - name: checkout code
+              uses: actions/checkout@v6
+            - name: build image docker
+              run: docker build -t ${{env.IMAGE_NAME}} .
+            - name: tag  image version
+              run: docker tag ${{env.IMAGE_NAME}} ${{env.IMAGE_NAME}}:${{github.run_number}}
+            - name: list images 
+              run: docker images
+            - name: docker login
+              uses: docker/login-action@v3
+              with:
+                  username: ${{ vars.DOCKERHUB_USERNAME }}
+                  password: ${{ secrets.DOCKERHUB_TOKEN }} 
+            - name: push image
+              run: docker push ${{env.IMAGE_NAME}}:${{github.run_number}}
+            - name: push image
+              run: docker push ${{env.IMAGE_NAME}}
+    deploy:
+        runs-on: ubuntu-latest
+        needs: push-and-build
+        steps:
+            - uses: appleboy/ssh-action@v1
+              with:
+                 host:   ${{ secrets.VPS_HOST }}
+                 username: ${{ secrets.VPS_USERNAME }}
+                 password: ${{ secrets.VPS_PASSWORD }}
+                 script: |
+                     cd /home/user/devops-scripts/backend
+                     sudo docker compose pull backend-api
+                     sudo docker compose up -d backend-api --force-recreate
+
+             

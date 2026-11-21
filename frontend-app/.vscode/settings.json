@@ -1,0 +1,6 @@
+{
+    "sonarlint.connectedMode.project": {
+        "connectionId": "abdelkader-devops",
+        "projectKey": "abdelkader-DevOps_frontend-app"
+    }
+}
